@@ -112,7 +112,6 @@
           this.Bscroll = new BScroll(this.$refs.slides,{
             scrollY:true
           })
-          console.log(this.Bscroll);
         },
         onplay(id) {
           //更改数据源

@@ -20,8 +20,8 @@
         </div>
       </div>
       <div  @click="currentview" v-else class="lyric" ref="lyricList">
-        <ul>
-          <li v-for="item in lyric" v-html="item.s" v-if="lyric" class="yellow" :data-time="item.t"></li>
+        <ul ref="lyricWrap">
+          <li v-for="(item,index) in lyric" v-html="item.s" v-if="lyric" :data-time="item.t" :class="index==flag?'yellow':''"></li>
         </ul>
       </div>
 
@@ -96,7 +96,8 @@
         pcurrentTime:0,
         pduration:0,
         currentView:true,
-        lyric:[]
+        lyric:[],
+        flag:0
       }
     },
     watch: {
@@ -129,33 +130,35 @@
         getLyric(id).then(res => {
           if(res.code == ERR_OK) {
 
-            console.log(res);
             let arr = res.lrc.lyric.split("\n");
             let re = /\[\d*:\d*((\.|\:)\d*)*\]/g;
             let arr1 = [];
 
-
+            function formatTime(num) {
+              num = num.substring(1,num.length - 1);
+              let arrTime = num.split(":");
+              return (parseFloat(arrTime[0]*60) + parseFloat(arrTime[1])).toFixed(2)
+            }
 
             for(var i=0;i<arr.length;i++) {
-              let s = arr[i].match(re)?arr[i].match(re)[0]:0;
-
-              if(s.length>1){
-                let arr3=s.split(':');
-                console.log(arr3);
-                s=arr3[0]*3600+arr[1]
-              }
+              let s = arr[i].match(re)?formatTime(arr[i].match(re)[0]):0;
 
               arr1.push({
                 t:s,
                 s:arr[i].slice(arr[i].indexOf("]")+1,arr[i].length)
               })
             }
-            this.lyric = arr1;
+            this.lyric = arr1.slice(0,arr1.length-1);
           }
         })
+
+        this.currentView = true;
       }
     },
     computed: {
+      activeLrc(index){
+        return index==this.flag?true:false;
+      },
       showMusic() {
         return this.song.length ? true : false;
       },
@@ -192,7 +195,6 @@
         this.play = true;
         //设置总时长
         this.duration = this.zero(e.target.duration);
-        console.log('开始播放');
       },
       endM() {
         this.play = false;
@@ -205,7 +207,6 @@
         } else if (this.mode == "single") {
           this.single();
         }
-        console.log('播放结束');
       },
       isPrev() {
         this.play = false;
@@ -277,6 +278,23 @@
       error() {
         console.log('手动清除SRC');
       },
+      scrollLyric(ct) {
+        for(var i=0;i<this.lyric.length;i++) {
+          if(i != this.lyric.length - 1 && ct>=this.lyric[i].t && ct<=this.lyric[i+1].t){
+            this.flag = i;
+          }
+        }
+
+        if(ct >= this.lyric[this.lyric.length - 1].t){
+          this.flag = this.lyric.length - 1;
+        }
+
+        if(this.flag>4){
+          this.$refs.lyricWrap.style.transform = `translate3d(0,${-46*(this.flag-3)}px,0)`
+        }
+        // this.$refs.lyricWrap.style.transform = `translate3d(0,0,0)`;
+
+      },
       updateTime(e) {
         this.pcurrentTime = e.target.currentTime;
         this.pduration = e.target.duration;
@@ -284,6 +302,11 @@
         let salc = e.target.currentTime / e.target.duration;
         this.$refs.progress.style.width = this.$refs.banInner.offsetWidth * salc + "px";
         this.$refs.pBtnWrapper.style.left = (this.$refs.banInner.offsetWidth * salc - 8) + "px";
+
+        //滚动歌词
+        if(this.lyric.length >1 && !this.currentView){
+          this.scrollLyric(this.pcurrentTime)
+        }
       },
       zero(time) {
         let cur = parseInt(time);//秒数
@@ -392,15 +415,18 @@
       top: 80px;
       bottom: 170px;
       overflow: hidden;
-      li{
-        text-align: center;
-        line-height: 40px;
-        height: 40px;
-        margin-bottom: 6px;
-        font-size:16px;
-        color:white;
-        &.yellow {
-          color:yellow;
+      ul{
+      transition: all 0.4s;
+        li{
+          text-align: center;
+          line-height: 40px;
+          height: 40px;
+          margin-bottom: 6px;
+          font-size:16px;
+          color:white;
+          &.yellow {
+            color:yellow;
+          }
         }
       }
     }
